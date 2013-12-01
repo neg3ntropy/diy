@@ -2,13 +2,13 @@ r"""
 Do It yourself Dependency Injection
 ***********************************
 
-A minimal but working dependency injector that works transparently leveraging
+A minimal but working dependency injector that works transparently, leveraging
 metaclasses.
 
 Usage
 +++++
 
-Define an interface and an implementation as usual
+Define an interface and an implementation as usual:
 
 >>> class Interface(object):
 ...     def imethod(self):
@@ -21,37 +21,37 @@ Define an interface and an implementation as usual
 ...         return self.value
 
 Make Implementation the provider of Interface objects, by registering on the
-*injector*
+*injector*:
 
 >>> injector.provide(Interface, Implementation)
 
 In a dependent class request injection of an object implementing Interface
-for the **keyword** parameter named 'interface'
+for the **keyword** parameter named 'interface':
 
 >>> @inject(interface=Interface)
 ... class Dependent(object):
 ...     def __init__(self, interface):
 ...         self.interface = interface
 
-Instantiate object omitting the parameter 'interface'
+Instantiate object omitting the parameter 'interface':
 
 >>> Dependent().interface.imethod()
 'Implementation'
 
 If you need to use the object with a custom parameter you can do it manually
-using a **keyword** parameter
+using a **keyword** parameter:
 
 >>> Dependent(interface=object()).interface.__class__
 <type 'object'>
 
-It is also possible to provide multiple *named* implementations and/or custom
-singleton instance
+It is also possible to set up multiple *named* implementations and/or use
+custom singleton instances for an interface:
 
 >>> instance = Implementation()
 >>> instance.value = 'instance'
 >>> injector.provide_instance(Interface, instance, name='name')
 
-Just require them with named() in the decorator
+Just request them using named() in the decorator:
 
 >>> @inject(interface=named('name', Interface))
 ... class NamedDependent(object):
@@ -61,8 +61,8 @@ Just require them with named() in the decorator
 >>> NamedDependent().interface.imethod()
 'instance'
 
-But you can make singletons both with injected parameters and as parameters
-themselves by annotating the class
+But you can also turn classes into singletons with injected parameters with an
+annotation:
 
 >>> @singleton()
 ... class Singleton(object):
@@ -70,6 +70,9 @@ themselves by annotating the class
 
 >>> Singleton() is Singleton()
 True
+
+And of course you can also inject classes, without the need for defining and
+interface and registering an implementation:
 
 >>> @inject(singleton=Singleton)
 ... class SingletonDependent(object):
@@ -82,7 +85,7 @@ True
 Other tests
 +++++++++++
 
-Class with custom metaclasses are supported.
+Class with custom metaclasses are supported:
 
 >>> class Meta(type):
 ...     pass
@@ -95,7 +98,7 @@ Class with custom metaclasses are supported.
 >>> MetaDependent().interface.imethod()
 'Implementation'
 
-Derived classes get inject as well, but remember to call super!
+Derived classes get inject as well, but remember to call super!:
 
 >>> class Derived(Dependent):
 ...     def __init__(self, extra, interface):

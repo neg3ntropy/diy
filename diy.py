@@ -15,8 +15,10 @@ Define an interface and an implementation as usual
 ...         raise NotImplemented
 
 >>> class Implementation(Interface):
+...     def __init__(self):
+...         self.value = 'Implementation'
 ...     def imethod(self):
-...         return "Implementation"
+...         return self.value
 
 Make Implementation the provider of Interface objects, by registering on the
 *injector*
@@ -42,8 +44,25 @@ using a **keyword** parameter
 >>> Dependent(interface=object()).interface.__class__
 <type 'object'>
 
-You can make singletons both with injected parameters and as parameters
-themselves
+It is also possible to provide multiple *named* implementations and/or custom
+singleton instance
+
+>>> instance = Implementation()
+>>> instance.value = 'instance'
+>>> injector.provide_instance(Interface, instance, name='name')
+
+Just require them with named() in the decorator
+
+>>> @inject(interface=named('name', Interface))
+... class NamedDependent(object):
+...     def __init__(self, interface):
+...         self.interface = interface
+
+>>> NamedDependent().interface.imethod()
+'instance'
+
+But you can make singletons both with injected parameters and as parameters
+themselves by annotating the class
 
 >>> @singleton()
 ... class Singleton(object):
@@ -94,11 +113,17 @@ class Injector(object):
         self._providers = {None: {}}
 
     def provide(self, iface, cls, name=None):
+        "Bind an interface to a class"
         assert issubclass(cls, iface)
         self._providers.setdefault(name, {})[iface] = cls
 
+    def provide_instance(self, iface, obj, name=None):
+        "Bind an interface to an object"
+        self._providers.setdefault(name, {})[iface] = lambda: obj
+
     def get_instance(self, iface_or_cls, name=None):
-        provider = self._providers[name].setdefault(iface_or_cls, iface_or_cls)
+        "Get an object implementing an interface"
+        provider = self._providers[name].get(iface_or_cls, iface_or_cls)
         return provider()
 
 
@@ -149,7 +174,7 @@ def _inject(_injectable_type, **dependencies):
 
 
 def inject(**dependencies):
-    "bind constructor arguments to implementations"
+    "Bind constructor arguments to implementations"
     return _inject(Injectable, **dependencies)
 
 
@@ -157,4 +182,15 @@ def singleton(**dependencies):
     "Make the class a singleton, accepts the same parameters as inject()"
     return _inject(Singleton, **dependencies)
 
-__all__ = ['injector', 'inject', 'singleton']
+
+class Named(type):
+
+    def __call__(cls):
+        return injector.get_instance(cls.iface, name=cls.name)
+
+
+def named(name, iface):
+        return Named('%s<%s>' % (iface.__name__, name), (object,),
+                     {'iface': iface, 'name': name})
+
+__all__ = ['injector', 'inject', 'singleton', 'named']

@@ -5,6 +5,9 @@ Do It yourself Dependency Injection
 A minimal but working dependency injector that works transparently, leveraging
 metaclasses.
 
+Not yet validated by production usage, it is mostly proposed as an educational
+proof of concept.
+
 Usage
 +++++
 
@@ -12,7 +15,7 @@ Define an interface and an implementation as usual:
 
 >>> class Interface(object):
 ...     def imethod(self):
-...         raise NotImplemented
+...         raise NotImplementedError()
 
 >>> class Implementation(Interface):
 ...     def __init__(self):
@@ -41,8 +44,8 @@ Instantiate object omitting the parameter 'interface':
 If you need to use the object with a custom parameter you can do it manually
 using a **keyword** parameter:
 
->>> Dependent(interface=object()).interface.__class__
-<type 'object'>
+>>> Dependent(interface='parameter').interface
+'parameter'
 
 It is also possible to set up multiple *named* implementations and/or use
 custom singleton instances for an interface:
@@ -65,21 +68,21 @@ But you can also turn classes into singletons with injected parameters with an
 annotation:
 
 >>> @singleton()
-... class Singleton(object):
+... class SomeSingleton(object):
 ...     pass
 
->>> Singleton() is Singleton()
+>>> SomeSingleton() is SomeSingleton()
 True
 
 And of course you can also inject classes, without the need for defining and
 interface and registering an implementation:
 
->>> @inject(singleton=Singleton)
+>>> @inject(singleton=SomeSingleton)
 ... class SingletonDependent(object):
 ...     def __init__(self, singleton):
 ...         self.singleton = singleton
 
->>> SingletonDependent().singleton is Singleton()
+>>> SingletonDependent().singleton is SomeSingleton()
 True
 
 Other tests

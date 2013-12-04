@@ -106,6 +106,7 @@ Derived classes get inject as well, but remember to call super!:
 'Implementation'
 
 No duplicate classes are built
+
 >>> type(Dependent) is Injectable
 True
 >>> type(Derived) is type(Dependent)
@@ -144,6 +145,8 @@ class Injector(object):
         provider = self._providers[name].get(iface_or_cls, iface_or_cls)
         return provider()
 
+    def __repr__(self):
+        return '<injector>'
 
 injector = Injector()
 "Import this and provide your implementations"

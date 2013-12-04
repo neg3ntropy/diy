@@ -47,19 +47,17 @@ using a **keyword** parameter:
 It is also possible to set up multiple *named* implementations and/or use
 custom singleton instances for an interface:
 
->>> instance = Implementation()
->>> instance.value = 'instance'
->>> injector.provide_instance(Interface, instance, name='name')
+>>> injector.provide_instance(str, 'http://localhost:1234/', name='endpoint')
 
 Just request them using named() in the decorator:
 
->>> @inject(interface=named('name', Interface))
+>>> @inject(endpoint=named('endpoint', str))
 ... class NamedDependent(object):
-...     def __init__(self, interface):
-...         self.interface = interface
+...     def __init__(self, endpoint):
+...         self.endpoint = endpoint
 
->>> NamedDependent().interface.imethod()
-'instance'
+>>> NamedDependent().endpoint
+'http://localhost:1234/'
 
 But you can also turn classes into singletons:
 
@@ -129,12 +127,12 @@ class Injector(object):
     def provide(self, iface, cls, name=None):
         "Bind an interface to a class"
         assert issubclass(cls, iface)
-        self.provide_factory(iface, cls)
+        self.provide_factory(iface, cls, name)
 
     def provide_instance(self, iface, obj, name=None):
         "Bind an interface to an object"
         assert isinstance(obj, iface)
-        self.provide_factory(iface, lambda: obj)
+        self.provide_factory(iface, lambda: obj, name)
 
     def provide_factory(self, iface, method, name=None):
         "Bind an interface to a factory method, called with no parameters"

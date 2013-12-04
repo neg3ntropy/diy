@@ -224,7 +224,8 @@ class Named(type):
 
 
 def named(name, iface):
-        return Named('%s<%s>' % (iface.__name__, name), (object,),
-                     {'iface': iface, 'name': name})
+    "Request a named implementation of a dependency"
+    return Named('%s<%s>' % (iface.__name__, name), (object,),
+                 {'iface': iface, 'name': name})
 
 __all__ = ['injector', 'inject', 'singleton', 'named']

@@ -2,11 +2,8 @@ r"""
 Do It yourself Dependency Injection
 ***********************************
 
-A minimal but working dependency injector that works transparently, leveraging
-metaclasses.
-
-Not yet validated by production usage, it is mostly proposed as an educational
-proof of concept.
+A minimal, but feature complete, dependency injection library that works
+transparently, leveraging metaclasses.
 
 Usage
 +++++
@@ -64,11 +61,10 @@ Just request them using named() in the decorator:
 >>> NamedDependent().interface.imethod()
 'instance'
 
-But you can also turn classes into singletons with injected parameters with an
-annotation:
+But you can also turn classes into singletons:
 
->>> @singleton()
-... class SomeSingleton(object):
+>>> @singleton(interface=Interface)
+... class SomeSingleton(Dependent):
 ...     pass
 
 >>> SomeSingleton() is SomeSingleton()
@@ -110,10 +106,22 @@ Derived classes get inject as well, but remember to call super!:
 
 >>> Derived('extra').interface.imethod()
 'Implementation'
+
+No duplicate classes are built
+>>> type(Dependent) is Injectable
+True
+>>> type(Derived) is type(Dependent)
+True
+>>> named('name', Interface) is named('name', Interface)
+True
 """
 
 
 class Injector(object):
+    """
+    The injector provides instances implementing interfaces using classes,
+    factories or live objects
+    """
 
     def __init__(self):
         self._providers = {None: {}}
@@ -121,11 +129,17 @@ class Injector(object):
     def provide(self, iface, cls, name=None):
         "Bind an interface to a class"
         assert issubclass(cls, iface)
-        self._providers.setdefault(name, {})[iface] = cls
+        self.provide_factory(iface, cls)
 
     def provide_instance(self, iface, obj, name=None):
         "Bind an interface to an object"
-        self._providers.setdefault(name, {})[iface] = lambda: obj
+        assert isinstance(obj, iface)
+        self.provide_factory(iface, lambda: obj)
+
+    def provide_factory(self, iface, method, name=None):
+        "Bind an interface to a factory method, called with no parameters"
+        assert callable(method)
+        self._providers.setdefault(name, {})[iface] = method
 
     def get_instance(self, iface_or_cls, name=None):
         "Get an object implementing an interface"
@@ -148,7 +162,7 @@ class Injectable(type):
         return r
 
 
-class Singleton(type):
+class Singleton(Injectable):
     "Metaclass to implement instance reuse"
 
     def __call__(cls, *args, **kwargs):
@@ -162,12 +176,14 @@ class Singleton(type):
 def _with_meta(new_meta, cls):
     meta = type(cls)
     if not issubclass(meta, new_meta):
-        # class has a custom metaclass, we extend it on the fly
-        name = new_meta.__name__ + meta.__name__
-        meta = type(name, (new_meta,) + meta.__bases__, {})
+        if new_meta.__mro__[1:] != meta.__mro__:
+            # class has a custom metaclass, we extend it on the fly
+            name = new_meta.__name__ + meta.__name__
+            new_meta = type(name, (new_meta,) + meta.__bases__, {})
         # rebuild the class
-        return meta(cls.__name__, cls.__bases__, dict(cls.__dict__))
+        return new_meta(cls.__name__, cls.__bases__, dict(cls.__dict__))
     else:
+        # class has alredy the correct metaclass due to inheritance
         return cls
 
 
@@ -190,6 +206,18 @@ def singleton(**dependencies):
 
 
 class Named(type):
+    "Metaclass to implement named lookup of dependencies"
+
+    _names = {}
+
+    def __new__(metacls, name, bases, attrs):
+        name = attrs['name']
+        iface = attrs['iface']
+        cls = metacls._names.setdefault(name, {}).get(iface)
+        if cls is None:
+            cls = super(Named, metacls).__new__(metacls, name, bases, attrs)
+            metacls._names[name][iface] = cls
+        return cls
 
     def __call__(cls):
         return injector.get_instance(cls.iface, name=cls.name)
